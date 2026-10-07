@@ -1,0 +1,21 @@
+# Maintainer: openOODA-tools <ops@openooda.org>
+pkgname=oodmesg-bin
+_pkgname=oodmesg
+pkgver=0.1.0
+pkgrel=1
+pkgdesc="Prints and monitors kernel ring buffer events with timestamp conversions."
+arch=('x86_64')
+url="https://github.com/openOODA-tools/oodmesg"
+license=('Apache-2.0')
+depends=('glibc')
+provides=('oodmesg')
+conflicts=('oodmesg')
+source_x86_64=("${url}/releases/download/v${pkgver}/oodmesg-linux-x86_64"
+               "uninstall.sh::https://raw.githubusercontent.com/openOODA-tools/${_pkgname}/v${pkgver}/uninstall.sh")
+sha256sums_x86_64=('SKIP'
+                   'SKIP')
+
+package() {
+    install -Dm755 "${srcdir}/oodmesg-linux-x86_64" "${pkgdir}/usr/bin/oodmesg"
+    install -Dm755 uninstall.sh "${pkgdir}/usr/bin/oodmesg-uninstall"
+}
