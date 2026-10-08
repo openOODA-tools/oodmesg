@@ -1,0 +1,62 @@
+// # ANSI Color Renderer for Kernel Messages
+//
+// Logline: Applies syntax color highlights to timestamps, severity levels, and log payloads.
+//
+// Setup: Emits standard ANSI escape sequences conforming to terminal capability switches.
+//
+// Beats:
+//   1. Determine ANSI color code according to message severity level.
+//   2. Format bracketed uptime prefix with distinct cyan timestamp styling.
+//   3. Highlight error messages in bold red and warnings in yellow.
+//   4. Deliver formatted plain or colorized terminal text stream.
+
+import "kernel/kmsg_types.oo";
+
+fn ansi_reset() -> String { return "\x1b[0m"; }
+fn ansi_bold() -> String { return "\x1b[1m"; }
+fn ansi_dim() -> String { return "\x1b[2m"; }
+fn ansi_green() -> String { return "\x1b[32m"; }
+fn ansi_yellow() -> String { return "\x1b[33m"; }
+fn ansi_red() -> String { return "\x1b[31m"; }
+fn ansi_cyan() -> String { return "\x1b[36m"; }
+fn ansi_white() -> String { return "\x1b[37m"; }
+
+pub fn format_message_ansi(msg: KernelMessage, use_color: Bool) -> String {
+    if !use_color {
+        return msg.timestamp_sec + " " + msg.message + "\n";
+    }
+
+    let mut ts_color: String = ansi_green();
+    let mut msg_color: String = ansi_white();
+
+    if msg.level <= 3 {
+        // emerg, alert, crit, err
+        msg_color = ansi_bold() + ansi_red();
+        ts_color = ansi_red();
+    } else if msg.level == 4 {
+        // warn
+        msg_color = ansi_yellow();
+        ts_color = ansi_yellow();
+    } else if msg.level == 5 {
+        // notice
+        msg_color = ansi_bold() + ansi_white();
+    } else if msg.level == 7 {
+        // debug
+        msg_color = ansi_dim();
+        ts_color = ansi_dim();
+    }
+
+    return ts_color + msg.timestamp_sec + ansi_reset() + " "
+        + msg_color + msg.message + ansi_reset() + "\n";
+}
+
+pub fn format_message_list_ansi(messages: List[KernelMessage], use_color: Bool) -> String {
+    let n: Int = list_len(messages);
+    let mut out: String = "";
+    let mut i: Int = 0;
+    while i < n {
+        out = out + format_message_ansi(list_get(messages, i), use_color);
+        i = i + 1;
+    }
+    return out;
+}

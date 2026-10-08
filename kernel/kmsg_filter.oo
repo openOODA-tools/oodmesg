@@ -1,0 +1,77 @@
+// # Kernel Message Filtering & Statistics
+//
+// Logline: Filters kernel log streams by severity level, facility subsystem, and keyword queries.
+//
+// Setup: Evaluates KernelMessage records against KmsgOpts predicates and aggregates telemetry counts.
+//
+// Beats:
+//   1. Check severity level membership against comma-separated filter criteria.
+//   2. Check facility subsystem membership (kernel, userspace, daemons).
+//   3. Match substring keywords within kernel log message payloads.
+//   4. Filter list of messages and compute severity level distribution statistics.
+
+import "kernel/kmsg_types.oo";
+
+pub fn matches_level(msg_lvl: Int, filter: String) -> Bool {
+    let f_len: Int = chars_len(filter);
+    if f_len == 0 {
+        return true;
+    }
+    let lvl_name: String = level_to_name(msg_lvl);
+    return str_contains(filter, lvl_name);
+}
+
+pub fn matches_facility(msg_fac: Int, filter: String) -> Bool {
+    let f_len: Int = chars_len(filter);
+    if f_len == 0 {
+        return true;
+    }
+    let fac_name: String = facility_to_name(msg_fac);
+    return str_contains(filter, fac_name);
+}
+
+pub fn matches_query(msg: KernelMessage, query: String) -> Bool {
+    let q_len: Int = chars_len(query);
+    if q_len == 0 {
+        return true;
+    }
+    return str_contains(msg.message, query);
+}
+
+pub fn filter_messages(messages: List[KernelMessage], opts: KmsgOpts) -> List[KernelMessage] {
+    let mut out: List[KernelMessage] = list_new();
+    let n: Int = list_len(messages);
+    let mut i: Int = 0;
+    let mut count: Int = 0;
+
+    while i < n {
+        let msg: KernelMessage = list_get(messages, i);
+        let ok_lvl: Bool = matches_level(msg.level, opts.level_filter);
+        let ok_fac: Bool = matches_facility(msg.facility, opts.facility_filter);
+
+        if ok_lvl && ok_fac {
+            out = list_push(out, msg);
+            count = count + 1;
+            if opts.limit > 0 && count >= opts.limit {
+                return out;
+            }
+        }
+        i = i + 1;
+    }
+
+    return out;
+}
+
+pub fn count_level_occurrences(messages: List[KernelMessage], target_lvl: Int) -> Int {
+    let n: Int = list_len(messages);
+    let mut cnt: Int = 0;
+    let mut i: Int = 0;
+    while i < n {
+        let m: KernelMessage = list_get(messages, i);
+        if m.level == target_lvl {
+            cnt = cnt + 1;
+        }
+        i = i + 1;
+    }
+    return cnt;
+}

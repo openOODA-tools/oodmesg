@@ -1,0 +1,57 @@
+// # IPC Module Anchor
+//
+// Logline: Unified substrate verification anchor for oodmesg IPC interfaces.
+//
+// Setup: Exports CLI options parser, JSON field extraction, and streaming MCP server.
+//
+// Beats:
+//   1. Re-export IPC structures, parsers, and MCP request handlers.
+//   2. Run internal anchor tests validating CLI options and JSON field parsing.
+//   3. Assert MCP initialize and tool dispatch responses conform to specification.
+//   4. Return boolean pass/fail status for IPC module test suite.
+
+import "kernel/kmsg_types.oo";
+import "ipc/json_field.oo";
+import "ipc/cli_options.oo";
+import "ipc/mcp_server.oo";
+
+pub fn run_ipc_tests() -> Bool {
+    return test_ipc();
+}
+
+pub fn test_ipc() -> Bool {
+    // 1. CLI options test
+    let mut args: List[String] = list_new();
+    args = list_push(args, "-l");
+    args = list_push(args, "err,warn");
+    args = list_push(args, "-n");
+    args = list_push(args, "25");
+    args = list_push(args, "-j");
+    args = list_push(args, "-k");
+
+    let opts: KmsgOpts = parse_cli_args(args);
+    if opts.level_filter != "err,warn" { return false; }
+    if opts.limit != 25 { return false; }
+    if !opts.json_mode { return false; }
+    if opts.facility_filter != "kern" { return false; }
+
+    // 2. JSON field parsing test
+    let sample_json: String = "{\"name\":\"dmesg_read\",\"limit\":10,\"json_mode\":true}";
+    if json_extract_str_field(sample_json, "name") != "dmesg_read" { return false; }
+    if json_extract_int_field(sample_json, "limit", 0) != 10 { return false; }
+    if !json_extract_bool_field(sample_json, "json_mode", false) { return false; }
+
+    // 3. MCP protocol responses
+    let init_resp: String = render_mcp_init("1");
+    if !str_contains(init_resp, "\"name\":\"oodmesg\"") { return false; }
+    if !str_contains(init_resp, "\"version\":\"0.2.0\"") { return false; }
+
+    let list_resp: String = render_mcp_tools_list("2");
+    if !str_contains(list_resp, "dmesg_read") { return false; }
+    if !str_contains(list_resp, "dmesg_search") { return false; }
+    if !str_contains(list_resp, "dmesg_filter_level") { return false; }
+    if !str_contains(list_resp, "dmesg_stats") { return false; }
+    if !str_contains(list_resp, "dmesg_demo") { return false; }
+
+    return true;
+}

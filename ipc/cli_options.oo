@@ -1,0 +1,87 @@
+// # Command-Line Options Parser for Kernel Dmesg
+//
+// Logline: Parses command-line arguments into typed KmsgOpts execution configuration.
+//
+// Setup: Implements POSIX dmesg flags, level filters, limit options, and streaming MCP switches.
+//
+// Beats:
+//   1. Ingest argument array and iterate tokens.
+//   2. Parse severity level and facility subsystem filter switches.
+//   3. Parse limit counts, human time toggles, and JSON Lines modes.
+//   4. Deliver completed options struct to command dispatcher.
+
+import "kernel/kmsg_types.oo";
+
+fn parse_str_to_int(s: String) -> Int {
+    let n: Int = chars_len(s);
+    let mut res: Int = 0;
+    let mut i: Int = 0;
+    while i < n {
+        let b: Int = byte_at(s, i);
+        if b >= 48 && b <= 57 {
+            res = res * 10 + (b - 48);
+        }
+        i = i + 1;
+    }
+    return res;
+}
+
+pub fn parse_cli_args(args: List[String]) -> KmsgOpts {
+    let mut opts: KmsgOpts = default_kmsg_opts();
+    let n: Int = list_len(args);
+    let mut i: Int = 0;
+
+    while i < n {
+        let arg: String = list_get(args, i);
+
+        if arg == "-h" || arg == "--help" {
+            opts.show_help = true;
+        } else if arg == "-v" || arg == "--version" {
+            opts.show_version = true;
+        } else if arg == "-j" || arg == "--json" {
+            opts.json_mode = true;
+        } else if arg == "-D" || arg == "--demo" {
+            opts.demo_mode = true;
+        } else if arg == "--mcp" {
+            opts.mcp_mode = true;
+        } else if arg == "-H" || arg == "--human" {
+            opts.human_time = true;
+        } else if arg == "-k" || arg == "--kernel" {
+            opts.facility_filter = "kern";
+        } else if arg == "-u" || arg == "--userspace" {
+            opts.facility_filter = "user";
+        } else if arg == "-l" || arg == "--level" {
+            if i + 1 < n {
+                i = i + 1;
+                opts.level_filter = list_get(args, i);
+            }
+        } else if str_starts_with(arg, "--level=") {
+            opts.level_filter = str_slice(arg, 8, chars_len(arg));
+        } else if arg == "-n" || arg == "--limit" {
+            if i + 1 < n {
+                i = i + 1;
+                opts.limit = parse_str_to_int(list_get(args, i));
+            }
+        } else if str_starts_with(arg, "--limit=") {
+            opts.limit = parse_str_to_int(str_slice(arg, 8, chars_len(arg)));
+        } else if arg == "--color" {
+            if i + 1 < n {
+                i = i + 1;
+                opts.color_mode = list_get(args, i);
+            }
+        } else if str_starts_with(arg, "--color=") {
+            opts.color_mode = str_slice(arg, 8, chars_len(arg));
+        } else if arg == "--theme" {
+            if i + 1 < n {
+                i = i + 1;
+                opts.theme_name = list_get(args, i);
+            }
+        } else if str_starts_with(arg, "--theme=") {
+            opts.theme_name = str_slice(arg, 8, chars_len(arg));
+        }
+
+        i = i + 1;
+    }
+
+    return opts;
+}

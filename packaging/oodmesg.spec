@@ -1,7 +1,7 @@
 Name:           oodmesg
-Version:        0.1.0
+Version:        0.2.0
 Release:        1%{?dist}
-Summary:        Prints and monitors kernel ring buffer events with timestamp conversions.
+Summary:        Sovereign Linux kernel ring buffer reader and monitor in pure openOODA.
 License:        ASL 2.0
 URL:            https://github.com/openOODA-tools/oodmesg
 Source0:        oodmesg-linux-x86_64
@@ -10,8 +10,9 @@ BuildArch:      x86_64
 Requires:       glibc
 
 %description
-oodmesg is a sovereign, capability-bounded KERNEL LOG RING written
-in pure openOODA, featuring zero ambient authority, oote color themes,
+oodmesg is a sovereign, capability-bounded Linux kernel ring buffer reader
+and monitor written in pure openOODA, featuring zero ambient authority,
+systemd-journald alignment, severity filtering, synthetic boot showcases,
 and an MCP stdio server.
 
 %install
@@ -24,5 +25,5 @@ install -m 0755 %{SOURCE1} %{buildroot}/usr/bin/oodmesg-uninstall
 /usr/bin/oodmesg-uninstall
 
 %changelog
-* Wed Oct 07 2026 openOODA-tools <ops@openooda.org> - 0.1.0-1
-- Initial sovereign blueprint scaffolding
+* Thu Oct 08 2026 openOODA-tools <ops@openooda.org> - 0.2.0-1
+- Sovereign pure openOODA elevation with dual-surface CLI and MCP

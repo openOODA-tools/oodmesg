@@ -1,13 +1,28 @@
-// # oodmesg Root Anchor
+// # Aggregate Root Substrate Anchor
 //
-// Logline: Top-level anchor re-exporting options, core logic, render, and ipc subsystems.
+// Logline: Unified test runner aggregating verification anchors from kernel, render, and ipc subsystems.
 //
-// Setup: Pure shim re-exporting all oodmesg subsystem anchors.
+// Setup: Demands zero ambient authority, links all functional module anchors together.
 //
 // Beats:
-//   1. Re-export options parsing subsystem.
-//   2. Re-export core oodmesg execution engine.
-//   3. Re-export render formatting subsystem.
-//   4. Re-export Model Context Protocol (MCP) IPC subsystem.
+//   1. Execute kernel module anchor tests for message parsing, uptime, and filtering.
+//   2. Execute render module anchor tests for ANSI coloring, JSON Lines, and synthetic boot.
+//   3. Execute IPC module anchor tests for CLI options and streaming MCP protocol.
+//   4. Return aggregate boolean pass/fail status.
 
-import "main.oo";
+import "kernel/anchor.oo";
+import "render/anchor.oo";
+import "ipc/anchor.oo";
+
+pub fn run_all_tests() -> Bool {
+    if !run_kernel_tests() {
+        return false;
+    }
+    if !run_render_tests() {
+        return false;
+    }
+    if !run_ipc_tests() {
+        return false;
+    }
+    return true;
+}

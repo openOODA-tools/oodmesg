@@ -1,0 +1,86 @@
+// # Kernel Ring Buffer Message Types
+//
+// Logline: Data structures and severity mappings representing Linux kernel ring buffer messages.
+//
+// Setup: Pure type definitions and level string conversions adhering to POSIX syslog and /dev/kmsg formats.
+//
+// Beats:
+//   1. Define KernelMessage structure capturing severity, facility, timestamp, and payload.
+//   2. Define KmsgOpts structure holding CLI filtering and formatting flags.
+//   3. Provide severity level integer-to-string and string-to-integer mappings.
+//   4. Expose default constructor for execution options.
+
+pub type KernelMessage = struct {
+    level: Int,
+    facility: Int,
+    seq: Int,
+    timestamp_us: Int,
+    timestamp_sec: String,
+    message: String
+};
+
+pub type KmsgOpts = struct {
+    level_filter: String,
+    facility_filter: String,
+    human_time: Bool,
+    limit: Int,
+    json_mode: Bool,
+    demo_mode: Bool,
+    mcp_mode: Bool,
+    show_help: Bool,
+    show_version: Bool,
+    color_mode: String,
+    theme_name: String
+};
+
+pub fn default_kmsg_opts() -> KmsgOpts {
+    return KmsgOpts {
+        level_filter: "",
+        facility_filter: "",
+        human_time: false,
+        limit: 0,
+        json_mode: false,
+        demo_mode: false,
+        mcp_mode: false,
+        show_help: false,
+        show_version: false,
+        color_mode: "auto",
+        theme_name: "",
+    };
+}
+
+pub fn level_to_name(lvl: Int) -> String {
+    if lvl == 0 { return "emerg"; }
+    if lvl == 1 { return "alert"; }
+    if lvl == 2 { return "crit"; }
+    if lvl == 3 { return "err"; }
+    if lvl == 4 { return "warn"; }
+    if lvl == 5 { return "notice"; }
+    if lvl == 6 { return "info"; }
+    if lvl == 7 { return "debug"; }
+    return "unknown";
+}
+
+pub fn name_to_level(name: String) -> Int {
+    if name == "emerg" { return 0; }
+    if name == "alert" { return 1; }
+    if name == "crit" { return 2; }
+    if name == "err" || name == "error" { return 3; }
+    if name == "warn" || name == "warning" { return 4; }
+    if name == "notice" { return 5; }
+    if name == "info" { return 6; }
+    if name == "debug" { return 7; }
+    return -1;
+}
+
+pub fn facility_to_name(fac: Int) -> String {
+    if fac == 0 { return "kern"; }
+    if fac == 1 { return "user"; }
+    if fac == 2 { return "mail"; }
+    if fac == 3 { return "daemon"; }
+    if fac == 4 { return "auth"; }
+    if fac == 5 { return "syslog"; }
+    if fac == 6 { return "lpr"; }
+    if fac == 7 { return "news"; }
+    return "other";
+}

@@ -1,0 +1,102 @@
+// # Kernel Ring Buffer Message Parser
+//
+// Logline: Parses structured /dev/kmsg and syslog messages into normalized KernelMessage records.
+//
+// Setup: Decodes facility and severity bitmasks, monotonic microsecond timestamps, and log payloads.
+//
+// Beats:
+//   1. Parse /dev/kmsg comma-separated header prefix and payload separator.
+//   2. Compute facility and severity levels from combined priority integer.
+//   3. Format monotonic uptime timestamp into standard bracketed second notation.
+//   4. Fallback parse traditional timestamp-prefixed log lines.
+
+import "kernel/kmsg_types.oo";
+
+fn parse_int_prefix(s: String, start: Int, end: Int) -> Int {
+    let mut res: Int = 0;
+    let mut i: Int = start;
+    while i < end {
+        let b: Int = byte_at(s, i);
+        if b >= 48 && b <= 57 {
+            res = res * 10 + (b - 48);
+        }
+        i = i + 1;
+    }
+    return res;
+}
+
+pub fn format_uptime_sec(us: Int) -> String {
+    let sec: Int = us / 1000000;
+    let frac: Int = us % 1000000;
+
+    let sec_str: String = sec.to_string();
+    let mut frac_str: String = frac.to_string();
+    while chars_len(frac_str) < 6 {
+        frac_str = "0" + frac_str;
+    }
+
+    let mut pad: String = "";
+    while chars_len(pad) + chars_len(sec_str) < 5 {
+        pad = pad + " ";
+    }
+
+    return "[" + pad + sec_str + "." + frac_str + "]";
+}
+
+pub fn make_kmsg(lvl: Int, fac: Int, seq: Int, us: Int, msg: String) -> KernelMessage {
+    return KernelMessage {
+        level: lvl,
+        facility: fac,
+        seq: seq,
+        timestamp_us: us,
+        timestamp_sec: format_uptime_sec(us),
+        message: msg,
+    };
+}
+
+pub fn parse_kmsg_line(line: String) -> KernelMessage {
+    let n: Int = chars_len(line);
+    let mut semi_pos: Int = -1;
+    let mut i: Int = 0;
+    while i < n {
+        if byte_at(line, i) == 59 { // ';'
+            semi_pos = i;
+            i = n;
+        } else {
+            i = i + 1;
+        }
+    }
+
+    if semi_pos > 0 {
+        let header: String = str_slice(line, 0, semi_pos);
+        let payload: String = str_slice(line, semi_pos + 1, n);
+
+        let mut c1: Int = -1;
+        let mut c2: Int = -1;
+        let mut j: Int = 0;
+        let h_len: Int = chars_len(header);
+        while j < h_len {
+            if byte_at(header, j) == 44 { // ','
+                if c1 < 0 { c1 = j; }
+                else if c2 < 0 { c2 = j; }
+            }
+            j = j + 1;
+        }
+
+        if c1 > 0 && c2 > c1 {
+            let prio: Int = parse_int_prefix(header, 0, c1);
+            let seq: Int = parse_int_prefix(header, c1 + 1, c2);
+            let mut c3: Int = c2 + 1;
+            while c3 < h_len && byte_at(header, c3) != 44 {
+                c3 = c3 + 1;
+            }
+            let us: Int = parse_int_prefix(header, c2 + 1, c3);
+            let lvl: Int = prio % 8;
+            let fac: Int = prio / 8;
+            return make_kmsg(lvl, fac, seq, us, payload);
+        }
+    }
+
+    // Fallback: simple line or legacy dmesg format
+    return make_kmsg(6, 0, 0, 0, line);
+}

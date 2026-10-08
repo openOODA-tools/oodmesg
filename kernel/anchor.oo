@@ -1,0 +1,61 @@
+// # Kernel Module Anchor
+//
+// Logline: Unified substrate verification anchor for oodmesg kernel ring buffer parser and filters.
+//
+// Setup: Validates /dev/kmsg decoding, uptime formatting, and severity level predicate matching.
+//
+// Beats:
+//   1. Assert severity level and facility mappings.
+//   2. Assert /dev/kmsg structured line parser and uptime timestamp generation.
+//   3. Assert message filtering and severity count aggregation.
+//   4. Return boolean pass/fail status for kernel module test suite.
+
+import "kernel/kmsg_types.oo";
+import "kernel/kmsg_parser.oo";
+import "kernel/kmsg_filter.oo";
+
+pub fn run_kernel_tests() -> Bool {
+    return test_kernel();
+}
+
+pub fn test_kernel() -> Bool {
+    // 1. Level mappings
+    if level_to_name(3) != "err" { return false; }
+    if level_to_name(4) != "warn" { return false; }
+    if level_to_name(6) != "info" { return false; }
+    if name_to_level("err") != 3 { return false; }
+    if name_to_level("warn") != 4 { return false; }
+    if facility_to_name(0) != "kern" { return false; }
+    if facility_to_name(1) != "user" { return false; }
+
+    // 2. Parser and uptime tests
+    let raw: String = "6,10,1250000,-;eth0: Link is Up - 1Gbps/Full";
+    let msg: KernelMessage = parse_kmsg_line(raw);
+    if msg.level != 6 { return false; }
+    if msg.facility != 0 { return false; }
+    if msg.seq != 10 { return false; }
+    if msg.timestamp_us != 1250000 { return false; }
+    if !str_contains(msg.timestamp_sec, "1.250000") { return false; }
+    if msg.message != "eth0: Link is Up - 1Gbps/Full" { return false; }
+
+    // 3. Filter and stats tests
+    if !matches_level(3, "err,warn") { return false; }
+    if !matches_level(4, "err,warn") { return false; }
+    if matches_level(6, "err,warn") { return false; }
+
+    let mut list_m: List[KernelMessage] = list_new();
+    list_m = list_push(list_m, make_kmsg(3, 0, 1, 1000, "disk write error"));
+    list_m = list_push(list_m, make_kmsg(4, 0, 2, 2000, "temperature high"));
+    list_m = list_push(list_m, make_kmsg(6, 0, 3, 3000, "service started"));
+
+    let mut opts: KmsgOpts = default_kmsg_opts();
+    opts.level_filter = "err";
+    let filtered: List[KernelMessage] = filter_messages(list_m, opts);
+    if list_len(filtered) != 1 { return false; }
+    if list_get(filtered, 0).level != 3 { return false; }
+
+    if count_level_occurrences(list_m, 3) != 1 { return false; }
+    if count_level_occurrences(list_m, 6) != 1 { return false; }
+
+    return true;
+}

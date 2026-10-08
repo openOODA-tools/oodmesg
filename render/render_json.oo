@@ -1,0 +1,61 @@
+// # JSON Lines Formatter for Kernel Messages
+//
+// Logline: Formats kernel log messages into structured JSON Lines records for agent pipelines.
+//
+// Setup: Serializes severity, facility, monotonic uptime, and payload strings with escaping.
+//
+// Beats:
+//   1. Escape message payloads for safe JSON serialization.
+//   2. Encode kernel metadata fields into JSON object representation.
+//   3. Format single message entry into one-line JSON string.
+//   4. Format batch of kernel messages into streaming JSON Lines.
+
+import "kernel/kmsg_types.oo";
+
+pub fn escape_json_payload(s: String) -> String {
+    let n: Int = chars_len(s);
+    let mut out: String = "";
+    let mut i: Int = 0;
+    while i < n {
+        let b: Int = byte_at(s, i);
+        if b == 92 {
+            out = out + "\\\\";
+        } else if b == 34 {
+            out = out + "\\\"";
+        } else if b == 10 {
+            out = out + "\\n";
+        } else if b == 13 {
+            out = out + "\\r";
+        } else if b == 9 {
+            out = out + "\\t";
+        } else {
+            out = out + str_slice(s, i, i + 1);
+        }
+        i = i + 1;
+    }
+    return out;
+}
+
+pub fn format_json_message(msg: KernelMessage) -> String {
+    let mut out: String = "{";
+    out = out + "\"level\":" + msg.level.to_string() + ",";
+    out = out + "\"level_name\":\"" + level_to_name(msg.level) + "\",";
+    out = out + "\"facility\":\"" + facility_to_name(msg.facility) + "\",";
+    out = out + "\"seq\":" + msg.seq.to_string() + ",";
+    out = out + "\"timestamp_us\":" + msg.timestamp_us.to_string() + ",";
+    out = out + "\"timestamp\":\"" + escape_json_payload(msg.timestamp_sec) + "\",";
+    out = out + "\"message\":\"" + escape_json_payload(msg.message) + "\"";
+    out = out + "}\n";
+    return out;
+}
+
+pub fn format_json_messages(messages: List[KernelMessage]) -> String {
+    let n: Int = list_len(messages);
+    let mut out: String = "";
+    let mut i: Int = 0;
+    while i < n {
+        out = out + format_json_message(list_get(messages, i));
+        i = i + 1;
+    }
+    return out;
+}

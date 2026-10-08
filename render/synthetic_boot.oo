@@ -1,0 +1,57 @@
+// # Synthetic Kernel Boot Sequence Showcase
+//
+// Logline: Generates realistic Linux kernel boot sequence demonstration messages.
+//
+// Setup: Exercises kernel initialization phases from bootstrap banner to systemd-journald startup.
+//
+// Beats:
+//   1. Build synthetic log entries capturing SMP setup, ACPI, NVMe, and filesystems.
+//   2. Populate severity levels across info, notice, warning, and error states.
+//   3. Dispatch output formatting in plain, colorized ANSI, or JSON Lines modes.
+//   4. Return formatted demonstration string for CLI and MCP consumption.
+
+import "kernel/kmsg_types.oo";
+import "kernel/kmsg_parser.oo";
+import "render/render_ansi.oo";
+import "render/render_json.oo";
+
+pub fn build_synthetic_boot_log() -> List[KernelMessage] {
+    let mut msgs: List[KernelMessage] = list_new();
+
+    msgs = list_push(msgs, make_kmsg(5, 0, 1, 0, "Linux version 6.12.0-fedora-server (mockbuild@fedora) (gcc 14.2.1) #1 SMP PREEMPT_DYNAMIC"));
+    msgs = list_push(msgs, make_kmsg(6, 0, 2, 100, "Command line: BOOT_IMAGE=/vmlinuz-6.12.0 root=UUID=742f1b40-8547-4959-994c ro console=tty0"));
+    msgs = list_push(msgs, make_kmsg(6, 0, 3, 500, "x86/fpu: Supporting XSAVE feature 0x001: 'x87 floating point registers'"));
+    msgs = list_push(msgs, make_kmsg(6, 0, 4, 1500, "ACPI: Early table checksum verification enabled"));
+    msgs = list_push(msgs, make_kmsg(6, 0, 5, 2300, "ACPI: PM-Timer IO Port: 0x408"));
+    msgs = list_push(msgs, make_kmsg(6, 0, 6, 12000, "smp: Bringing up secondary CPUs ..."));
+    msgs = list_push(msgs, make_kmsg(6, 0, 7, 24000, "smp: Brought up 1 node, 16 CPUs"));
+    msgs = list_push(msgs, make_kmsg(6, 0, 8, 45000, "PCI: Using configuration type 1 for base access"));
+    msgs = list_push(msgs, make_kmsg(4, 0, 9, 85000, "energy_model: em_cpu_register: capacity values not valid, EM not enabled"));
+    msgs = list_push(msgs, make_kmsg(6, 0, 10, 154000, "nvme nvme0: 16/0/0 default/read/poll queues"));
+    msgs = list_push(msgs, make_kmsg(6, 0, 11, 230000, "nvme0n1: p1 p2 p3"));
+    msgs = list_push(msgs, make_kmsg(6, 0, 12, 380000, "EXT4-fs (nvme0n1p3): mounted filesystem with ordered data mode. Quota mode: none."));
+    msgs = list_push(msgs, make_kmsg(6, 0, 13, 510000, "NET: Registered PF_INET protocol family"));
+    msgs = list_push(msgs, make_kmsg(6, 0, 14, 750000, "eth0: Link is Up - 1Gbps/Full - flow control rx/tx"));
+    msgs = list_push(msgs, make_kmsg(6, 0, 15, 980000, "systemd[1]: Inserted module 'autofs4'"));
+    msgs = list_push(msgs, make_kmsg(6, 0, 16, 1150000, "systemd[1]: Starting systemd-journald.service - Journal Service..."));
+    msgs = list_push(msgs, make_kmsg(6, 0, 17, 1240000, "systemd[1]: Started systemd-journald.service - Journal Service."));
+
+    return msgs;
+}
+
+pub fn run_synthetic_boot_demo(json_mode: Bool, use_color: Bool) -> String {
+    let msgs: List[KernelMessage] = build_synthetic_boot_log();
+
+    if json_mode {
+        return format_json_messages(msgs);
+    }
+
+    let mut out: String = "================================================================================\n";
+    out = out + "               oodmesg: Sovereign Linux Kernel Boot Showcase                   \n";
+    out = out + "================================================================================\n";
+    out = out + format_message_list_ansi(msgs, use_color);
+    out = out + "--------------------------------------------------------------------------------\n";
+    out = out + "  Status: 17 kernel ring buffer events recorded (systemd-journald active)\n";
+    out = out + "================================================================================\n";
+    return out;
+}

@@ -1,0 +1,50 @@
+// # Render Module Anchor
+//
+// Logline: Unified substrate verification anchor for oodmesg output renderers.
+//
+// Setup: Validates plain, ANSI colored, JSON Lines, and synthetic boot demonstration outputs.
+//
+// Beats:
+//   1. Assert ANSI message formatter in plain and colorized modes.
+//   2. Assert JSON Lines serialization with metadata fields.
+//   3. Assert synthetic boot sequence assembly and showcase text generation.
+//   4. Return boolean pass/fail status for render module test suite.
+
+import "kernel/kmsg_types.oo";
+import "kernel/kmsg_parser.oo";
+import "render/render_ansi.oo";
+import "render/render_json.oo";
+import "render/synthetic_boot.oo";
+
+pub fn run_render_tests() -> Bool {
+    return test_render();
+}
+
+pub fn test_render() -> Bool {
+    let msg: KernelMessage = make_kmsg(3, 0, 1, 1000000, "I/O error");
+
+    // 1. Plain ANSI test
+    let plain: String = format_message_ansi(msg, false);
+    if !str_contains(plain, "I/O error") { return false; }
+    if !str_contains(plain, "1.000000") { return false; }
+
+    // 2. Color ANSI test
+    let colored: String = format_message_ansi(msg, true);
+    if !str_contains(colored, "\x1b[") { return false; }
+
+    // 3. JSON Lines test
+    let json: String = format_json_message(msg);
+    if !str_contains(json, "\"level\":3") { return false; }
+    if !str_contains(json, "\"level_name\":\"err\"") { return false; }
+    if !str_contains(json, "\"message\":\"I/O error\"") { return false; }
+
+    // 4. Synthetic boot test
+    let boot_msgs: List[KernelMessage] = build_synthetic_boot_log();
+    if list_len(boot_msgs) != 17 { return false; }
+
+    let demo: String = run_synthetic_boot_demo(false, false);
+    if !str_contains(demo, "Linux version 6.12.0") { return false; }
+    if !str_contains(demo, "systemd-journald.service") { return false; }
+
+    return true;
+}

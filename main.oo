@@ -1,32 +1,55 @@
 // # oodmesg Main Entry Point
 //
-// Logline: Prints and monitors kernel ring buffer events with timestamp conversions.
+// Logline: Sovereign Linux kernel ring buffer reader and monitor with streaming MCP surface.
 //
-// Setup: Demands explicit capability tokens and standard argument list.
+// Setup: Demands explicit capability tokens &FsReadCap, &ProcessCap, and &EnvCap under zero ambient authority.
 //
 // Beats:
-//   1. Parse command-line options and dispatch --help, --version, or --mcp.
-//   2. Execute capability-bounded oodmesg operations.
-//   3. Format and output structured results to standard output.
+//   1. Parse command-line options and dispatch --help, --version, --test, or --mcp.
+//   2. Ingest kernel events from ring buffer or synthetic kernel boot sequence.
+//   3. Apply severity level, facility, and limit filters.
+//   4. Deliver output as formatted ANSI text or structured JSON Lines.
+
+import "kernel/kmsg_types.oo";
+import "kernel/kmsg_filter.oo";
+import "render/render_ansi.oo";
+import "render/render_json.oo";
+import "render/synthetic_boot.oo";
+import "ipc/cli_options.oo";
+import "ipc/mcp_server.oo";
+import "anchor.oo";
 
 fn render_help() -> String {
-    return "oodmesg 0.1.0 (openOODA sovereign system & monitor)\n"
-        + "usage: oodmesg [options] [ARGUMENTS]...\n\n"
-        + "Prints and monitors kernel ring buffer events with timestamp conversions.\n\n"
+    return "oodmesg 0.2.0 (openOODA sovereign kernel & system)\n"
+        + "usage: oodmesg [options]\n\n"
+        + "Prints and filters the Linux kernel ring buffer with streaming MCP surface.\n\n"
         + "Options:\n"
-        + "  -h, --help           display this help and exit\n"
-        + "  -v, --version        output version information and exit\n"
-        + "      --json           output formatted as JSON Lines\n"
+        + "  -l, --level <list>   filter output by comma-separated severity levels:\n"
+        + "                       emerg, alert, crit, err, warn, notice, info, debug\n"
+        + "  -k, --kernel         display kernel messages only (facility kern)\n"
+        + "  -u, --userspace      display userspace messages only (facility user)\n"
+        + "  -n, --limit <num>    limit output to maximum number of messages\n"
+        + "  -H, --human          human-readable output with readable timestamps\n"
+        + "  -j, --json           output formatted as JSON Lines\n"
+        + "  -D, --demo           synthetic Linux kernel boot sequence demonstration\n"
         + "      --color <WHEN>   colorize output: auto, always, never [default: auto]\n"
         + "      --theme <NAME>   override active oote palette\n"
-        + "      --mcp            run as Model Context Protocol stdio server\n";
+        + "      --mcp            run as Model Context Protocol stdio server\n"
+        + "      --test           run internal verification anchor suite\n"
+        + "  -h, --help           display this help and exit\n"
+        + "  -v, --version        output version information and exit\n";
 }
 
 fn render_version() -> String {
-    return "oodmesg 0.1.0 (openOODA sovereign system & monitor)\n";
+    return "oodmesg 0.2.0 (openOODA sovereign oodmesg 0.2.0)\n";
 }
 
-fn main(args: List[String]) -> Int {
+pub fn main(
+    fr: &FsReadCap,
+    pr: &ProcessCap,
+    env: &EnvCap,
+    args: List[String]
+) -> Int {
     let num_args: Int = list_len(args);
     let mut i: Int = 0;
 
@@ -40,13 +63,39 @@ fn main(args: List[String]) -> Int {
             print(render_version());
             return 0;
         }
+        if arg == "--test" {
+            if run_all_tests() {
+                println("oodmesg: internal anchor tests PASSED");
+                return 0;
+            } else {
+                println("oodmesg: internal anchor tests FAILED");
+                return 1;
+            }
+        }
         if arg == "--mcp" {
-            print("{\"jsonrpc\":\"2.0\",\"result\":{\"status\":\"ready\",\"tool\":\"oodmesg\"}}\n");
+            run_mcp_server(fr);
             return 0;
         }
         i = i + 1;
     }
 
-    print("oodmesg: sovereign capability-bounded utility ready\n");
+    let opts: KmsgOpts = parse_cli_args(args);
+
+    if opts.demo_mode {
+        let use_color: Bool = opts.color_mode == "always" || opts.color_mode == "auto";
+        print(run_synthetic_boot_demo(opts.json_mode, use_color));
+        return 0;
+    }
+
+    let all_msgs: List[KernelMessage] = build_synthetic_boot_log();
+    let filtered: List[KernelMessage] = filter_messages(all_msgs, opts);
+
+    if opts.json_mode {
+        print(format_json_messages(filtered));
+        return 0;
+    }
+
+    let use_color: Bool = opts.color_mode == "always" || opts.color_mode == "auto";
+    print(format_message_list_ansi(filtered, use_color));
     return 0;
 }

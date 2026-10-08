@@ -26,7 +26,7 @@ Written in 100% pure [openOODA](https://github.com/openOODA).
 
 ### Automated Installer (Linux x86_64 & aarch64)
 ```bash
-curl -fsSL https://openooda-tools.github.io/oodmesg/install.sh | bash
+curl -fsSL https://openOODA-tools.github.io/oodmesg/install.sh | bash
 ```
 
 ### Native Package Managers
@@ -37,16 +37,16 @@ yay -S oodmesg-bin
 cd packaging/arch && makepkg -si
 
 # Debian / Ubuntu (.deb)
-curl -fsSL https://openooda-tools.github.io/oodmesg/install.sh | bash -s -- --deb
+curl -fsSL https://openOODA-tools.github.io/oodmesg/install.sh | bash -s -- --deb
 
 # Fedora / RHEL (.rpm)
-curl -fsSL https://openooda-tools.github.io/oodmesg/install.sh | bash -s -- --rpm
+curl -fsSL https://openOODA-tools.github.io/oodmesg/install.sh | bash -s -- --rpm
 ```
 
 ### Uninstallation
 ```bash
 oodmesg-uninstall
-# or: curl -fsSL https://openooda-tools.github.io/oodmesg/uninstall.sh | bash
+# or: curl -fsSL https://openOODA-tools.github.io/oodmesg/uninstall.sh | bash
 ```
 
 ---
@@ -54,17 +54,25 @@ oodmesg-uninstall
 ## 2. CLI Usage
 
 ```
-usage: oodmesg [options] [ARGUMENTS]...
+usage: oodmesg [options]
 
-Prints and monitors kernel ring buffer events with timestamp conversions.
+Prints and filters the Linux kernel ring buffer with streaming MCP surface.
 
 Options:
-  -h, --help           display this help and exit
-  -v, --version        output version information and exit
-      --json           output formatted as JSON Lines
+  -l, --level <list>   filter output by comma-separated severity levels:
+                       emerg, alert, crit, err, warn, notice, info, debug
+  -k, --kernel         display kernel messages only (facility kern)
+  -u, --userspace      display userspace messages only (facility user)
+  -n, --limit <num>    limit output to maximum number of messages
+  -H, --human          human-readable output with readable timestamps
+  -j, --json           output formatted as JSON Lines
+  -D, --demo           synthetic Linux kernel boot sequence demonstration
       --color <WHEN>   colorize output: auto, always, never [default: auto]
       --theme <NAME>   override active oote palette
       --mcp            run as Model Context Protocol stdio server
+      --test           run internal verification anchor suite
+  -h, --help           display this help and exit
+  -v, --version        output version information and exit
 ```
 
 ---
@@ -80,6 +88,12 @@ Options:
 ## 4. Model Context Protocol (MCP)
 
 When invoked with `--mcp`, `oodmesg` runs a JSON-RPC 2.0 stdio server providing structured tools for AI coding agents:
+
+* `dmesg_read`: Read kernel ring buffer log messages with optional severity filter and limit.
+* `dmesg_search`: Search kernel ring buffer messages matching a substring query.
+* `dmesg_filter_level`: Filter kernel messages by severity level string (emerg, alert, crit, err, warn, notice, info, debug).
+* `dmesg_stats`: Summarize total counts of kernel messages grouped by severity level.
+* `dmesg_demo`: Run synthetic demonstration of Linux kernel boot sequence.
 
 ```bash
 oodmesg --mcp

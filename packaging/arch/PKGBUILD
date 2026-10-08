@@ -1,9 +1,9 @@
 # Maintainer: openOODA-tools <ops@openooda.org>
 pkgname=oodmesg-bin
 _pkgname=oodmesg
-pkgver=0.1.0
+pkgver=0.2.0
 pkgrel=1
-pkgdesc="Prints and monitors kernel ring buffer events with timestamp conversions."
+pkgdesc="Sovereign Linux kernel ring buffer reader and monitor in pure openOODA."
 arch=('x86_64')
 url="https://github.com/openOODA-tools/oodmesg"
 license=('Apache-2.0')

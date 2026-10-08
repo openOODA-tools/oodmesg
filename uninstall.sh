@@ -4,7 +4,7 @@
 # "Removes oodmesg binary, package installations, and cache."
 #
 # Usage:
-#   curl -fsSL https://openooda-toodmesg.github.io/oodmesg/uninstall.sh | bash
+#   curl -fsSL https://openOODA-tools.github.io/oodmesg/uninstall.sh | bash
 #   or: ./uninstall.sh [options]
 #
 # Options:
